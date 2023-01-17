@@ -87,7 +87,7 @@ model.add(LSTM(16))
 model.add(Dense(1, activation='sigmoid'))
 
 #adam = Adam(lr=0.01)
-sgd = SGD(lr=0.01)
+sgd = SGD(lr=0.02)
 model.compile(loss='binary_crossentropy', optimizer=sgd, metrics=['accuracy'])
 model.summary()
 history = model.fit(x_train, y_train, epochs=10, \
@@ -105,3 +105,37 @@ def plot_graphs(history, string):
     
 plot_graphs(history, 'accuracy')
 plot_graphs(history, 'loss')
+
+#Test Prediction
+test_path = './data/log_test_2000.csv'
+logs_series = pd.read_csv(test_path)
+logs_series = logs_series.values
+label_test = logs_series[:,1]
+logs_data = logs_series[:,0]
+logs_data, label = shuffle(logs_data, label_test)
+for i in range(len(logs_data)):
+    logs_data[i] = [x for x in logs_data[i].split(' ')]
+max_seq_len = 269
+log_seq = np.array(pad_sequences(logs_data, maxlen=max_seq_len, padding='pre'))
+log_seq = np.asarray(log_seq)
+
+total_log_count = logs_data.shape[0]
+
+logs_test = np.zeros((total_log_count, max_seq_len, low_dim_len))
+    
+for i in range(total_log_count):
+    for j in range(max_seq_len):
+        logs_test[i, j, :] = low_sem_vec[log_seq[i, j]] 
+
+x_test = logs_test
+y_test = label_test
+y_test = np.asarray(y_test).astype(np.int32)
+
+y_pred = model.predict(x_test)
+y_pred = np.array([1 if x > 0.5 else 0 for x in y_pred])
+test_acc = np.sum(y_pred == y_test) / len(y_test)
+print("Test accuracy: ", test_acc)
+
+from sklearn.metrics import f1_score
+print("F1 score: ", f1_score(y_test, y_pred))
+
